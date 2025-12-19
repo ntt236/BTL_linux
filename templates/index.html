@@ -2,44 +2,461 @@
 <html lang="vi">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Dự đoán trúng tuyển VKU</title>
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            boxShadow: {
+              soft: "0 10px 30px rgba(0,0,0,.08)",
+            },
+          },
+        },
+      };
+    </script>
   </head>
-  <body style="font-family: system-ui; max-width: 720px; margin: 40px auto">
-    <h2>Dự đoán khả năng trúng tuyển vào VKU</h2>
 
-    <div>
-      <label>Toán</label
-      ><input id="math" type="number" step="0.1" value="8.0" /><br />
-      <label>Lý</label
-      ><input id="physics" type="number" step="0.1" value="7.5" /><br />
-      <label>Hóa</label
-      ><input id="chemistry" type="number" step="0.1" value="7.0" /><br />
-      <label>Anh</label
-      ><input id="english" type="number" step="0.1" value="6.5" /><br />
-      <label>Ưu tiên</label
-      ><input id="priority" type="number" step="0.1" value="1" /><br /><br />
-
-      <button onclick="doPredict()">Dự đoán</button>
-      <h3 id="result"></h3>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <!-- Background glow -->
+    <div class="pointer-events-none fixed inset-0 -z-10">
+      <div
+        class="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-3xl"
+      ></div>
+      <div
+        class="absolute top-40 right-10 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl"
+      ></div>
+      <div
+        class="absolute bottom-0 left-10 h-80 w-80 rounded-full bg-emerald-400/10 blur-3xl"
+      ></div>
     </div>
 
+    <header class="mx-auto max-w-5xl px-4 pt-10 pb-6">
+      <div
+        class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div>
+          <p class="text-sm text-slate-300">
+            ML Demo • FastAPI • Logistic Regression
+          </p>
+          <h1 class="mt-1 text-3xl font-semibold tracking-tight">
+            Dự đoán khả năng trúng tuyển vào VKU
+          </h1>
+          <p class="mt-2 max-w-2xl text-slate-300">
+            Nhập điểm các môn + điểm ưu tiên. Hệ thống sẽ trả về xác suất dự
+            đoán (mô hình học máy đơn giản).
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <span
+            class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-slate-200 ring-1 ring-white/10"
+          >
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span> API:
+            <span id="apiState">Ready</span>
+          </span>
+          <button
+            id="btnExample"
+            class="rounded-xl bg-white/10 px-3 py-2 text-sm text-slate-100 ring-1 ring-white/10 hover:bg-white/15 active:scale-[0.99] transition"
+          >
+            Điền ví dụ
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-4 pb-16">
+      <div class="grid gap-6 lg:grid-cols-5">
+        <!-- Form -->
+        <section class="lg:col-span-3">
+          <div
+            class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 shadow-soft"
+          >
+            <h2 class="text-lg font-semibold">Thông tin thí sinh</h2>
+            <p class="mt-1 text-sm text-slate-300">
+              Điểm thang 0–10 (có thể nhập số lẻ). Ưu tiên: 0–2 (tuỳ quy ước).
+            </p>
+
+            <div class="mt-5 grid gap-4 sm:grid-cols-2">
+              <!-- input component -->
+              <div class="space-y-1">
+                <label class="text-sm text-slate-200">Toán</label>
+                <input
+                  id="math"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value="8.0"
+                  class="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-slate-100 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                />
+                <p class="text-xs text-rose-300 hidden" id="err-math">
+                  Điểm Toán không hợp lệ.
+                </p>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-sm text-slate-200">Vật Lý</label>
+                <input
+                  id="physics"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value="7.5"
+                  class="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-slate-100 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                />
+                <p class="text-xs text-rose-300 hidden" id="err-physics">
+                  Điểm Lý không hợp lệ.
+                </p>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-sm text-slate-200">Hóa</label>
+                <input
+                  id="chemistry"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value="7.0"
+                  class="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-slate-100 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                />
+                <p class="text-xs text-rose-300 hidden" id="err-chemistry">
+                  Điểm Hóa không hợp lệ.
+                </p>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-sm text-slate-200">Tiếng Anh</label>
+                <input
+                  id="english"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value="6.5"
+                  class="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-slate-100 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                />
+                <p class="text-xs text-rose-300 hidden" id="err-english">
+                  Điểm Anh không hợp lệ.
+                </p>
+              </div>
+
+              <div class="space-y-1 sm:col-span-2">
+                <label class="text-sm text-slate-200">Điểm ưu tiên</label>
+                <input
+                  id="priority"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="2"
+                  value="1"
+                  class="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-slate-100 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                />
+                <p class="text-xs text-slate-400">
+                  Ví dụ: KV/đối tượng ưu tiên. (Tuỳ bạn quy định trong dữ liệu.)
+                </p>
+                <p class="text-xs text-rose-300 hidden" id="err-priority">
+                  Ưu tiên không hợp lệ.
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                id="btnPredict"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 font-medium text-slate-900 hover:bg-cyan-400 active:scale-[0.99] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span id="btnText">Dự đoán</span>
+                <svg
+                  id="spinner"
+                  class="hidden h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    opacity=".25"
+                  />
+                  <path
+                    d="M22 12a10 10 0 0 1-10 10"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    opacity=".9"
+                  />
+                </svg>
+              </button>
+
+              <button
+                id="btnReset"
+                class="rounded-xl bg-white/10 px-4 py-2 text-sm ring-1 ring-white/10 hover:bg-white/15 active:scale-[0.99] transition"
+              >
+                Reset
+              </button>
+
+              <p class="text-sm text-slate-300">
+                Tổng (4 môn):
+                <span class="font-semibold text-slate-100" id="sumScore"
+                  >0.0</span
+                >
+              </p>
+            </div>
+
+            <div
+              class="mt-4 rounded-xl bg-slate-950/40 p-4 ring-1 ring-white/10"
+            >
+              <p class="text-sm text-slate-200 font-medium">Gợi ý</p>
+              <ul class="mt-2 list-disc pl-5 text-sm text-slate-300 space-y-1">
+                <li>
+                  Muốn demo “xịn” hơn: thêm parameter build trong Jenkins để
+                  nhập điểm và chạy dự đoán.
+                </li>
+                <li>Nếu dữ liệu ít, kết quả chỉ mang tính minh hoạ.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Result -->
+        <aside class="lg:col-span-2">
+          <div
+            class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 shadow-soft"
+          >
+            <h2 class="text-lg font-semibold">Kết quả</h2>
+            <p class="mt-1 text-sm text-slate-300">
+              Xác suất dự đoán theo mô hình (0–100%).
+            </p>
+
+            <div
+              class="mt-5 rounded-2xl bg-slate-950/40 p-5 ring-1 ring-white/10"
+            >
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-slate-300">Khả năng trúng tuyển</p>
+                  <p class="mt-1 text-4xl font-semibold" id="percent">--%</p>
+                </div>
+                <span
+                  id="badge"
+                  class="hidden rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-white/10"
+                ></span>
+              </div>
+
+              <div class="mt-4">
+                <div
+                  class="h-3 w-full rounded-full bg-white/10 overflow-hidden ring-1 ring-white/10"
+                >
+                  <div
+                    id="bar"
+                    class="h-full w-0 rounded-full bg-cyan-400 transition-all duration-500"
+                  ></div>
+                </div>
+                <p class="mt-2 text-xs text-slate-400" id="detail">
+                  Nhập điểm và bấm “Dự đoán”.
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-5 space-y-3">
+              <div class="rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
+                <p class="text-sm font-medium text-slate-200">API endpoint</p>
+                <p class="mt-1 text-sm text-slate-300">
+                  <code class="rounded bg-black/30 px-2 py-1"
+                    >POST /predict</code
+                  >
+                </p>
+              </div>
+
+              <div class="rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
+                <p class="text-sm font-medium text-slate-200">Trạng thái</p>
+                <p class="mt-1 text-sm text-slate-300" id="statusText">
+                  Chưa chạy dự đoán.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="mt-6 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 shadow-soft"
+          >
+            <h3 class="font-semibold">Demo nhanh</h3>
+            <p class="mt-2 text-sm text-slate-300">
+              Nếu chạy trên VM: mở
+              <span class="font-semibold">http://IP_VM:8000</span>. Nếu không
+              truy cập được từ Windows, kiểm tra network VM / mở port 8000.
+            </p>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="mt-10 text-center text-xs text-slate-500">
+        © VKU Admission Predictor • Tailwind UI (CDN) • Demo phục vụ học tập
+      </footer>
+    </main>
+
     <script>
-      async function doPredict() {
-        const payload = {
-          math: +math.value,
-          physics: +physics.value,
-          chemistry: +chemistry.value,
-          english: +english.value,
-          priority: +priority.value,
-        };
-        const res = await fetch("/predict", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        result.innerText = `Khả năng trúng tuyển: ${data.percent}%`;
+      const $ = (id) => document.getElementById(id);
+
+      const inputs = [
+        "math",
+        "physics",
+        "chemistry",
+        "english",
+        "priority",
+      ].map($);
+      const errIds = {
+        math: "err-math",
+        physics: "err-physics",
+        chemistry: "err-chemistry",
+        english: "err-english",
+        priority: "err-priority",
+      };
+
+      function clamp(n, min, max) {
+        return Math.max(min, Math.min(max, n));
       }
+
+      function getValues() {
+        return {
+          math: +$("math").value,
+          physics: +$("physics").value,
+          chemistry: +$("chemistry").value,
+          english: +$("english").value,
+          priority: +$("priority").value,
+        };
+      }
+
+      function updateSum() {
+        const v = getValues();
+        const sum = v.math + v.physics + v.chemistry + v.english;
+        $("sumScore").innerText = isFinite(sum) ? sum.toFixed(1) : "0.0";
+      }
+
+      function showError(key, show) {
+        $(errIds[key]).classList.toggle("hidden", !show);
+      }
+
+      function validate() {
+        const v = getValues();
+        let ok = true;
+
+        const rules = [
+          ["math", v.math, 0, 10],
+          ["physics", v.physics, 0, 10],
+          ["chemistry", v.chemistry, 0, 10],
+          ["english", v.english, 0, 10],
+          ["priority", v.priority, 0, 2],
+        ];
+
+        for (const [k, val, min, max] of rules) {
+          const bad = !(isFinite(val) && val >= min && val <= max);
+          showError(k, bad);
+          if (bad) ok = false;
+        }
+        return ok;
+      }
+
+      function setLoading(on) {
+        $("btnPredict").disabled = on;
+        $("spinner").classList.toggle("hidden", !on);
+        $("btnText").innerText = on ? "Đang tính..." : "Dự đoán";
+        $("apiState").innerText = on ? "Working..." : "Ready";
+      }
+
+      function setResult(percent) {
+        $("percent").innerText = `${percent.toFixed(2)}%`;
+        $("bar").style.width = `${clamp(percent, 0, 100)}%`;
+
+        const badge = $("badge");
+        badge.classList.remove("hidden");
+
+        let label = "Trung bình";
+        let cls = "bg-amber-400/20 text-amber-200 ring-amber-300/20";
+        if (percent >= 75) {
+          label = "Cao";
+          cls = "bg-emerald-400/20 text-emerald-200 ring-emerald-300/20";
+        } else if (percent < 45) {
+          label = "Thấp";
+          cls = "bg-rose-400/20 text-rose-200 ring-rose-300/20";
+        }
+
+        badge.className = `rounded-full px-3 py-1 text-xs font-semibold ring-1 ${cls}`;
+        badge.innerText = label;
+
+        $(
+          "detail"
+        ).innerText = `Mức đánh giá: ${label}. (Dựa trên ngưỡng minh hoạ)`;
+      }
+
+      async function doPredict() {
+        updateSum();
+        if (!validate()) {
+          $("statusText").innerText = "Vui lòng nhập đúng phạm vi điểm.";
+          return;
+        }
+
+        const payload = getValues();
+        setLoading(true);
+        $("statusText").innerText = "Đang gọi API /predict ...";
+
+        try {
+          const res = await fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!res.ok) {
+            const t = await res.text();
+            throw new Error(`HTTP ${res.status}: ${t.slice(0, 200)}`);
+          }
+
+          const data = await res.json();
+          setResult(+data.percent);
+          $("statusText").innerText = "Dự đoán thành công ✅";
+        } catch (e) {
+          $("statusText").innerText = "Lỗi gọi API ❌ (xem console).";
+          console.error(e);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function resetForm() {
+        $("math").value = 8.0;
+        $("physics").value = 7.5;
+        $("chemistry").value = 7.0;
+        $("english").value = 6.5;
+        $("priority").value = 1;
+
+        Object.keys(errIds).forEach((k) => showError(k, false));
+        $("percent").innerText = "--%";
+        $("bar").style.width = "0%";
+        $("badge").classList.add("hidden");
+        $("detail").innerText = "Nhập điểm và bấm “Dự đoán”.";
+        $("statusText").innerText = "Chưa chạy dự đoán.";
+        updateSum();
+      }
+
+      $("btnPredict").addEventListener("click", doPredict);
+      $("btnReset").addEventListener("click", resetForm);
+      $("btnExample").addEventListener("click", () => {
+        $("math").value = 9.0;
+        $("physics").value = 8.5;
+        $("chemistry").value = 8.0;
+        $("english").value = 7.5;
+        $("priority").value = 1.0;
+        updateSum();
+      });
+
+      inputs.forEach((i) => i.addEventListener("input", updateSum));
+      updateSum();
     </script>
   </body>
 </html>
