@@ -1,0 +1,16 @@
+[Unit]
+Description=VKU MLOps Predictor (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=jenkins
+WorkingDirectory=/opt/vku-mlops/current
+Environment=APP_VERSION=prod
+Environment=MODEL_PATH=/opt/vku-mlops/current/artifacts/model_latest.joblib
+ExecStart=/opt/vku-mlops/venv/bin/uvicorn src.app:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
