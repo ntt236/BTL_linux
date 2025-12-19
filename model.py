@@ -11,6 +11,5 @@ def train_model(csv_path: str = "data.csv"):
     model.fit(X, y)
     return model
 
-def predict_prob(model, student: list[float]) -> float:
-    prob = model.predict_proba([student])[0][1]
-    return float(prob)
+def predict_prob(model, student):
+    return float(model.predict_proba([student])[0][1])
