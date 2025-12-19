@@ -1,13 +1,17 @@
 import os, json
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from src.schemas import PredictReq, PredictRes
-from src.model import load_model, predict_proba
-
+from .schemas import PredictReq, PredictRes
+from .model import load_model, predict_proba
 
 APP_VERSION = os.getenv("APP_VERSION", "dev")
-MODEL_PATH = os.getenv("MODEL_PATH", "artifacts/model_latest.joblib")
-MODEL_META = os.getenv("MODEL_META", "")  # optional: meta json path
+MODEL_META = os.getenv("MODEL_META", "")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+
+MODEL_PATH = os.getenv("MODEL_PATH", os.path.join(ROOT_DIR, "artifacts", "model_latest.joblib"))
+TEMPLATES_DIR = os.path.join(ROOT_DIR, "templates")
 
 app = FastAPI(title="VKU MLOps Predictor", version=APP_VERSION)
 
@@ -20,7 +24,7 @@ def label_from_percent(p: float) -> str:
 
 @app.get("/", response_class=HTMLResponse)
 def home():
-    with open("templates/index.html", "r", encoding="utf-8") as f:
+    with open(os.path.join(TEMPLATES_DIR, "index.html"), "r", encoding="utf-8") as f:
         return f.read()
 
 @app.get("/health")
@@ -42,9 +46,4 @@ def predict(req: PredictReq):
     feats = [req.math, req.physics, req.chemistry, req.english, req.priority]
     prob = predict_proba(_model, feats)
     percent = round(prob * 100, 2)
-    return PredictRes(
-        probability=prob,
-        percent=percent,
-        label=label_from_percent(percent),
-        model_version=APP_VERSION
-    )
+    return PredictRes(probability=prob, percent=percent, label=label_from_percent(percent), model_version=APP_VERSION)
