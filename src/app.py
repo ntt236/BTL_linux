@@ -1,8 +1,9 @@
 import os, json
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from schemas import PredictReq, PredictRes
-from model import load_model, predict_proba
+from src.schemas import PredictReq, PredictRes
+from src.model import load_model, predict_proba
+
 
 APP_VERSION = os.getenv("APP_VERSION", "dev")
 MODEL_PATH = os.getenv("MODEL_PATH", "artifacts/model_latest.joblib")
